@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Korean Photobooth</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Playfair+Display:ital,wght@0,700;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Pacifico', 'cursive'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fdf2f8',
+                            100: '#fce7f3',
+                            200: '#fbcfe8',
+                            300: '#f9a8d4',
+                            400: '#f472b6',
+                            500: '#ec4899',
+                            600: '#db2777',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fafaf9;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .layout-thumb {
+            transition: all 0.2s ease;
+        }
+        .layout-thumb.active {
+            border-color: #ec4899;
+            background-color: #fdf2f8;
+            box-shadow: 0 0 0 2px #fbcfe8;
+        }
+
+        .active-font-btn {
+            border-color: #ec4899 !important;
+            background-color: #fdf2f8 !important;
+            color: #db2777 !important;
+        }
+
+        @keyframes flash {
+            0% { opacity: 0; background: white; }
+            50% { opacity: 1; background: white; }
+            100% { opacity: 0; background: transparent; }
+        }
+        .animate-flash {
+            animation: flash 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .layout-preview-slot {
+            background-color: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Fix for canvas outline */
+        .canvas-container {
+            margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Mirror the video feed */
+        #webcam {
+            transform: scaleX(-1);
+        }
+    </style>
+</head>
+<body class="h-[100dvh] w-screen overflow-hidden text-slate-800 flex flex-col-reverse md:flex-row">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl font-medium transition-all duration-300 transform -translate-y-20 opacity-0 z-50 flex items-center gap-3">
+        <i class="ph-fill ph-check-circle text-brand-400 text-xl"></i>
+        <span id="toast-msg">Notifikasi</span>
+    </div>
+
+    <!-- SIDEBAR: MAIN MENU -->
+    <!-- On mobile it sits at the bottom, on desktop it sits on the left -->
+    <aside class="w-full md:w-20 h-20 md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 flex flex-row md:flex-col items-center justify-around md:justify-start px-2 md:px-0 py-2 md:py-8 gap-2 md:gap-6 z-30 shrink-0 overflow-x-auto overflow-y-hidden custom-scrollbar">
+        <!-- Brand logo (hidden on mobile to save space) -->
+        <div class="hidden md:flex w-12 h-12 bg-brand-500 rounded-2xl items-center justify-center text-white mb-4 shadow-lg shadow-brand-500/30 shrink-0">
+            <i class="ph-fill ph-camera text-2xl"></i>
+        </div>
+        
+        <!-- Capture Phase Menus -->
+        <button onclick="togglePanel('layout')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 capture-only active" data-target="layout">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors bg-brand-50 text-brand-500 group-hover:bg-brand-50">
+                <i class="ph-fill ph-squares-four text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Layout</span>
+        </button>
+        <button onclick="togglePanel('timer')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 capture-only" data-target="timer">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
+                <i class="ph-fill ph-timer text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Waktu</span>
+        </button>
+        <button onclick="togglePanel('filter')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 capture-only" data-target="filter">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
+                <i class="ph-fill ph-magic-wand text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Filter</span>
+        </button>
+
+        <!-- Edit Phase Menus (Hidden initially) -->
+        <button onclick="togglePanel('stickers')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 edit-only hidden" data-target="stickers">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
+                <i class="ph-fill ph-smiley-sticker text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Stiker</span>
+        </button>
+        <button onclick="togglePanel('text')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 edit-only hidden" data-target="text">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
+                <i class="ph-fill ph-text-t text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Teks</span>
+        </button>
+        <button onclick="togglePanel('bg')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 edit-only hidden" data-target="bg">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
+                <i class="ph-fill ph-paint-bucket text-xl md:text-2xl"></i>
+            </div>
+            <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Warna</span>
+        </button>
+    </aside>
+
+    <!-- SECONDARY PANEL (OPTIONS) -->
+    <!-- Takes ~35vh on mobile to leave space for camera, full height on desktop -->
+    <div id="options-panel" class="w-full md:w-80 h-[35vh] md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 p-4 md:p-6 overflow-y-auto z-20 shrink-0 custom-scrollbar">
+        
+        <!-- Layouts Section -->
+        <div id="panel-layout" class="panel-content">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Pilih Layout</h2>
+                <p class="text-xs md:text-sm text-slate-500">Pilih template grid untuk fotomu.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 md:gap-3" id="layout-grid">
+                <!-- JS Generated -->
+            </div>
+        </div>
+
+        <!-- Timer Section -->
+        <div id="panel-timer" class="panel-content hidden">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Timer Foto</h2>
+                <p class="text-xs md:text-sm text-slate-500">Jeda waktu antar jepretan.</p>
+            </div>
+            <div class="flex flex-col gap-2 md:gap-3">
+                <button onclick="setTimer(0)" class="timer-btn border border-slate-200 bg-slate-50 p-3 md:p-4 rounded-xl hover:border-brand-300 font-semibold transition-all flex items-center justify-between text-sm md:text-base" data-time="0">
+                    <span>Langsung jepret</span>
+                    <span class="text-[10px] md:text-xs bg-slate-200 px-2 py-1 rounded-md">0s</span>
+                </button>
+                <button onclick="setTimer(3)" class="timer-btn border-2 border-brand-500 bg-brand-50 text-brand-600 p-3 md:p-4 rounded-xl font-semibold transition-all shadow-sm flex items-center justify-between text-sm md:text-base" data-time="3">
+                    <span>Standar</span>
+                    <span class="text-[10px] md:text-xs bg-brand-200 text-brand-700 px-2 py-1 rounded-md">3s</span>
+                </button>
+                <button onclick="setTimer(5)" class="timer-btn border border-slate-200 bg-slate-50 p-3 md:p-4 rounded-xl hover:border-brand-300 font-semibold transition-all flex items-center justify-between text-sm md:text-base" data-time="5">
+                    <span>Agak santai</span>
+                    <span class="text-[10px] md:text-xs bg-slate-200 px-2 py-1 rounded-md">5s</span>
+                </button>
+                <button onclick="setTimer(10)" class="timer-btn border border-slate-200 bg-slate-50 p-3 md:p-4 rounded-xl hover:border-brand-300 font-semibold transition-all flex items-center justify-between text-sm md:text-base" data-time="10">
+                    <span>Banyak gaya</span>
+                    <span class="text-[10px] md:text-xs bg-slate-200 px-2 py-1 rounded-md">10s</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div id="panel-filter" class="panel-content hidden">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Filter Kamera</h2>
+                <p class="text-xs md:text-sm text-slate-500">Bikin vibes fotomu makin estetik.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 md:gap-4">
+                <button onclick="setFilter('none', '')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Normal</span>
+                </button>
+                <button onclick="setFilter('grayscale(100%) contrast(110%)', 'grayscale(100%) contrast(1.1)')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" style="filter: grayscale(100%) contrast(110%);"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Classic B&W</span>
+                </button>
+                <button onclick="setFilter('sepia(60%) contrast(110%) brightness(105%)', 'sepia(0.6) contrast(1.1) brightness(1.05)')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" style="filter: sepia(60%) contrast(110%);"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Retro Film</span>
+                </button>
+                <button onclick="setFilter('hue-rotate(10deg) saturate(130%) brightness(110%)', 'hue-rotate(10deg) saturate(1.3) brightness(1.1)')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" style="filter: hue-rotate(10deg) saturate(130%);"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Vibrant</span>
+                </button>
+                <button onclick="setFilter('saturate(70%) brightness(120%) contrast(90%)', 'saturate(0.7) brightness(1.2) contrast(0.9)')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" style="filter: saturate(70%) brightness(120%) contrast(90%);"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Soft Pastel</span>
+                </button>
+                <button onclick="setFilter('contrast(130%) saturate(120%)', 'contrast(1.3) saturate(1.2)')" class="filter-btn group text-left">
+                    <div class="w-full aspect-square bg-slate-200 rounded-xl overflow-hidden mb-2 border-2 border-transparent group-hover:border-brand-300 transition-all"><img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" style="filter: contrast(130%) saturate(120%);"></div>
+                    <span class="text-xs md:text-sm font-semibold text-slate-700 block text-center">Punchy</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Stickers Section -->
+        <div id="panel-stickers" class="panel-content hidden">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Dekorasi</h2>
+                <p class="text-xs md:text-sm text-slate-500">Klik stiker buat nambahin. Bisa digeser & diubah ukurannya.</p>
+            </div>
+            
+            <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 md:mb-3">Cute Stuff</h3>
+            <div class="grid grid-cols-5 gap-2 text-2xl md:text-3xl mb-4 md:mb-6 bg-slate-50 p-2 md:p-3 rounded-xl border border-slate-100">
+                <button onclick="addTextSticker('✨')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">✨</button>
+                <button onclick="addTextSticker('💖')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">💖</button>
+                <button onclick="addTextSticker('🎀')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🎀</button>
+                <button onclick="addTextSticker('🌸')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🌸</button>
+                <button onclick="addTextSticker('👑')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">👑</button>
+                <button onclick="addTextSticker('🍓')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🍓</button>
+                <button onclick="addTextSticker('🧸')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🧸</button>
+                <button onclick="addTextSticker('☁️')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">☁️</button>
+                <button onclick="addTextSticker('🍄')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🍄</button>
+                <button onclick="addTextSticker('🐰')" class="hover:scale-125 hover:-rotate-12 transition transform aspect-square flex items-center justify-center">🐰</button>
+            </div>
+
+            <h3 class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 md:mb-3">Vibes</h3>
+            <div class="grid grid-cols-5 gap-2 text-2xl md:text-3xl bg-slate-50 p-2 md:p-3 rounded-xl border border-slate-100">
+                <button onclick="addTextSticker('🔥')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🔥</button>
+                <button onclick="addTextSticker('😎')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">😎</button>
+                <button onclick="addTextSticker('✌️')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">✌️</button>
+                <button onclick="addTextSticker('🫶')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🫶</button>
+                <button onclick="addTextSticker('🦋')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🦋</button>
+                <button onclick="addTextSticker('💿')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">💿</button>
+                <button onclick="addTextSticker('🍒')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🍒</button>
+                <button onclick="addTextSticker('🌈')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🌈</button>
+                <button onclick="addTextSticker('🍀')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🍀</button>
+                <button onclick="addTextSticker('🎉')" class="hover:scale-125 transition transform aspect-square flex items-center justify-center">🎉</button>
+            </div>
+        </div>
+
+        <!-- Text Section -->
+        <div id="panel-text" class="panel-content hidden">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Tambah Teks</h2>
+                <p class="text-xs md:text-sm text-slate-500">Tulis tanggal, atau klik teks di foto untuk mengedit.</p>
+            </div>
+            
+            <div class="flex flex-col gap-3 md:gap-4">
+                <!-- Font Selection -->
+                <div>
+                    <label class="text-[10px] md:text-xs font-bold text-slate-500 mb-2 block">Pilih Font</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setFontFamily('Plus Jakarta Sans')" class="text-xs md:text-sm border border-slate-200 bg-white py-2 rounded-xl hover:border-brand-300 font-sans transition-colors active-font-btn" id="font-btn-Plus Jakarta Sans">Modern</button>
+                        <button onclick="setFontFamily('Pacifico')" class="text-xs md:text-sm border border-slate-200 bg-white py-2 rounded-xl hover:border-brand-300 transition-colors" style="font-family: 'Pacifico', cursive;" id="font-btn-Pacifico">Cursive</button>
+                        <button onclick="setFontFamily('Caveat')" class="text-xs md:text-sm border border-slate-200 bg-white py-2 rounded-xl hover:border-brand-300 transition-colors" style="font-family: 'Caveat', cursive;" id="font-btn-Caveat">Handwriting</button>
+                        <button onclick="setFontFamily('Playfair Display')" class="text-xs md:text-sm border border-slate-200 bg-white py-2 rounded-xl hover:border-brand-300 transition-colors" style="font-family: 'Playfair Display', serif;" id="font-btn-Playfair Display">Elegant</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] md:text-xs font-bold text-slate-500 mb-1 block">Teks Kamu</label>
+                    <input type="text" id="custom-text-input" placeholder="Misal: 28 Feb 2026" class="w-full px-3 py-2 md:px-4 md:py-3 text-sm md:text-base bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition-all">
+                </div>
+                
+                <div>
+                    <label class="text-[10px] md:text-xs font-bold text-slate-500 mb-2 block">Pilih Warna</label>
+                    <div class="flex gap-2 md:gap-3">
+                        <button onclick="addCustomText('#ffffff')" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200 bg-white shadow-sm ring-2 ring-transparent hover:ring-brand-300 transition-all"></button>
+                        <button onclick="addCustomText('#1e293b')" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200 bg-slate-800 shadow-sm ring-2 ring-transparent hover:ring-brand-300 transition-all"></button>
+                        <button onclick="addCustomText('#ec4899')" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200 bg-pink-500 shadow-sm ring-2 ring-transparent hover:ring-pink-300 transition-all"></button>
+                        <button onclick="addCustomText('#3b82f6')" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200 bg-blue-500 shadow-sm ring-2 ring-transparent hover:ring-blue-300 transition-all"></button>
+                        <button onclick="addCustomText('#eab308')" class="w-7 h-7 md:w-8 md:h-8 rounded-full border border-slate-200 bg-yellow-500 shadow-sm ring-2 ring-transparent hover:ring-yellow-300 transition-all"></button>
+                    </div>
+                </div>
+                
+                <button onclick="addCustomText('#1e293b')" class="w-full bg-slate-800 text-white font-bold py-2 md:py-3 text-sm md:text-base rounded-xl hover:bg-slate-700 transition-colors md:mt-2 shadow-lg shadow-slate-200">
+                    Masukkan / Edit Teks
+                </button>
+            </div>
+        </div>
+
+        <!-- Background Color Section -->
+        <div id="panel-bg" class="panel-content hidden">
+            <div class="mb-4 md:mb-6">
+                <h2 class="font-bold text-lg md:text-xl text-slate-800">Warna Frame</h2>
+                <p class="text-xs md:text-sm text-slate-500">Ganti warna latar belakang polaroidmu.</p>
+            </div>
+            <div class="grid grid-cols-4 gap-2 md:gap-3">
+                <button onclick="changeFrameColor('#ffffff')" class="aspect-square rounded-xl border-2 border-slate-200 bg-white shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#000000')" class="aspect-square rounded-xl border-2 border-slate-200 bg-black shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#fce7f3')" class="aspect-square rounded-xl border-2 border-slate-200 bg-pink-100 shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#e0e7ff')" class="aspect-square rounded-xl border-2 border-slate-200 bg-indigo-100 shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#dcfce3')" class="aspect-square rounded-xl border-2 border-slate-200 bg-green-100 shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#fef3c7')" class="aspect-square rounded-xl border-2 border-slate-200 bg-yellow-100 shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#fee2e2')" class="aspect-square rounded-xl border-2 border-slate-200 bg-red-100 shadow-sm hover:scale-105 transition-transform"></button>
+                <button onclick="changeFrameColor('#f3f4f6')" class="aspect-square rounded-xl border-2 border-slate-200 bg-gray-100 shadow-sm hover:scale-105 transition-transform"></button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MAIN CONTENT (CAMERA / EDITOR) -->
+    <!-- Takes remaining space (flex-1) -->
+    <div class="flex-1 w-full md:w-auto flex flex-col relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
+        
+        <!-- PROGRESS BAR / STATUS -->
+        <div class="absolute top-4 md:top-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
+            <div class="glass-panel px-4 py-2 md:px-6 md:py-2 rounded-full font-bold text-xs md:text-sm text-slate-600 flex items-center gap-2 md:gap-3 shadow-sm">
+                <span id="step-badge" class="bg-brand-100 text-brand-600 px-2 py-1 rounded-md text-[10px] md:text-xs">Step 1</span>
+                <span id="status-text">Siap-siap berpose!</span>
+            </div>
+        </div>
+
+        <!-- CAMERA PHASE -->
+        <div id="capture-container" class="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
+            
+            <!-- Viewfinder Container -->
+            <div class="relative w-full max-w-4xl aspect-[4/3] bg-black rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden ring-4 md:ring-8 ring-white">
+                <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+                
+                <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
+                
+                <div id="countdown-display" class="absolute inset-0 flex items-center justify-center text-[8rem] md:text-[12rem] font-bold text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] hidden z-20 font-display">3</div>
+            </div>
+
+            <!-- Bottom Capture Controls -->
+            <div class="mt-4 md:mt-8 flex items-center justify-between w-full max-w-xl glass-panel p-2 md:p-4 rounded-2xl md:rounded-3xl shrink-0">
+                <div class="w-20 md:w-32 flex flex-col items-center justify-center text-center">
+                    <span class="text-[8px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Progress</span>
+                    <div class="font-bold text-slate-700">
+                        <span id="photo-counter" class="text-xl md:text-2xl text-brand-500">0</span> <span class="text-sm md:text-lg">/</span> <span id="photo-total" class="text-sm md:text-lg">4</span>
+                    </div>
+                </div>
+                
+                <button onclick="toggleCapture()" id="btn-capture" class="w-16 h-16 md:w-24 md:h-24 rounded-full bg-white border-[4px] md:border-[6px] border-slate-100 flex items-center justify-center hover:border-brand-100 hover:scale-105 transition-all shadow-xl group relative active:scale-95 shrink-0">
+                    <div id="btn-capture-inner" class="w-12 h-12 md:w-[72px] md:h-[72px] rounded-full bg-brand-500 group-hover:bg-brand-400 transition-colors flex items-center justify-center shadow-inner">
+                        <i id="btn-capture-icon" class="ph-fill ph-camera text-white text-2xl md:text-3xl"></i>
+                    </div>
+                </button>
+                
+                <div class="w-20 md:w-32 flex justify-center">
+                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                    <button onclick="document.getElementById('file-upload').click()" class="flex flex-col items-center justify-center text-slate-500 hover:text-brand-500 transition gap-1 px-2 md:px-4 py-2 rounded-xl hover:bg-slate-50">
+                        <i class="ph-fill ph-image text-xl md:text-2xl"></i>
+                        <span class="text-[10px] md:text-xs font-bold">Unggah</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDIT PHASE -->
+        <div id="edit-container" class="absolute inset-0 flex flex-col items-center justify-start p-2 md:p-8 z-0 hidden overflow-hidden pt-16 md:pt-20">
+            <!-- Canvas Wrapper: Handles responsive scaling -->
+            <div id="canvas-wrapper" class="relative flex-1 w-full flex justify-center items-center overflow-hidden drop-shadow-2xl">
+                <!-- Fabric Canvas goes here -->
+                <canvas id="main-canvas"></canvas>
+            </div>
+        </div>
+        
+        <!-- EDIT PHASE CONTROLS (Bottom Fixed in Main Content) -->
+        <div id="edit-controls" class="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center z-20 hidden pointer-events-none">
+            <div class="glass-panel p-2 rounded-2xl shadow-2xl flex items-center gap-1 md:gap-2 pointer-events-auto">
+                <button onclick="resetCapture()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition">
+                    <i class="ph-bold ph-arrow-counter-clockwise text-lg md:text-xl mb-1"></i>
+                    <span class="text-[8px] md:text-[10px] font-bold">Ulang</span>
+                </button>
+                
+                <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
+                
+                <button onclick="deleteSelectedSticker()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-500 transition" title="Hapus Stiker">
+                    <i class="ph-bold ph-trash text-lg md:text-xl mb-1"></i>
+                    <span class="text-[8px] md:text-[10px] font-bold">Hapus</span>
+                </button>
+                
+                <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
+                
+                <button onclick="downloadImage()" class="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 h-12 md:h-16 rounded-xl bg-slate-800 text-white hover:bg-slate-700 shadow-lg hover:shadow-xl font-bold transition ml-1 md:ml-2 text-sm md:text-base">
+                    <i class="ph-bold ph-download-simple text-lg md:text-xl"></i>
+                    <span class="hidden sm:inline">Simpan Foto</span>
+                    <span class="sm:hidden">Simpan</span>
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <script>
+        // 12 Layout Definitions (Coordinates are based on internal high-res canvas)
+        const layoutsData = [
+            // 1. Classic 4-Strip (Korean Style)
+            { id: '1', name: 'Classic 4-Strip', w: 600, h: 1800, bg: '#ffffff', slots: [
+                {x: 50, y: 50, w: 500, h: 360}, {x: 50, y: 440, w: 500, h: 360}, 
+                {x: 50, y: 830, w: 500, h: 360}, {x: 50, y: 1220, w: 500, h: 360}
+            ]},
+            // 2. Twin 3-Strip (Print two 3-strips)
+            { id: '2', name: 'Twin 3-Strip', w: 800, h: 1200, bg: '#fbcfe8', slots: [
+                {x: 40, y: 40, w: 340, h: 280}, {x: 40, y: 340, w: 340, h: 280}, {x: 40, y: 640, w: 340, h: 280}, // Left strip
+                {x: 420, y: 40, w: 340, h: 280}, {x: 420, y: 340, w: 340, h: 280}, {x: 420, y: 640, w: 340, h: 280} // Right strip (duplicates later)
+            ]},
+            // 3. Grid 2x2
+            { id: '3', name: 'Grid 2x2', w: 1000, h: 1200, bg: '#ffffff', slots: [
+                {x: 60, y: 60, w: 420, h: 420}, {x: 520, y: 60, w: 420, h: 420},
+                {x: 60, y: 520, w: 420, h: 420}, {x: 520, y: 520, w: 420, h: 420}
+            ]},
+            // 4. Vintage Polaroid
+            { id: '4', name: 'Polaroid', w: 800, h: 1000, bg: '#f8fafc', slots: [
+                {x: 60, y: 60, w: 680, h: 680}
+            ]},
+            // 5. Film Roll (Horizontal)
+            { id: '5', name: 'Film Roll', w: 1600, h: 600, bg: '#1e293b', slots: [
+                {x: 60, y: 60, w: 453, h: 480}, {x: 573, y: 60, w: 453, h: 480}, {x: 1086, y: 60, w: 453, h: 480}
+            ]},
+            // 6. Collage 3 (1 Top, 2 Bottom)
+            { id: '6', name: 'Collage Mix', w: 900, h: 1200, bg: '#e0e7ff', slots: [
+                {x: 60, y: 60, w: 780, h: 500}, 
+                {x: 60, y: 590, w: 375, h: 375}, {x: 465, y: 590, w: 375, h: 375}
+            ]},
+            // 7. Grid 3x2 (Passport Style)
+            { id: '7', name: 'Mini Grid 6', w: 1000, h: 1400, bg: '#ffffff', slots: [
+                {x: 60, y: 60, w: 420, h: 320}, {x: 520, y: 60, w: 420, h: 320},
+                {x: 60, y: 410, w: 420, h: 320}, {x: 520, y: 410, w: 420, h: 320},
+                {x: 60, y: 760, w: 420, h: 320}, {x: 520, y: 760, w: 420, h: 320}
+            ]},
+            // 8. Wide Cinema
+            { id: '8', name: 'Wide Cinema', w: 1200, h: 800, bg: '#000000', slots: [
+                {x: 60, y: 60, w: 1080, h: 560}
+            ]},
+            // 9. Tall Pair (2 Vertical)
+            { id: '9', name: 'Double Stack', w: 600, h: 1200, bg: '#fef3c7', slots: [
+                {x: 60, y: 60, w: 480, h: 480}, {x: 60, y: 580, w: 480, h: 480}
+            ]},
+            // 10. Horizontal 4-Strip
+            { id: '10', name: 'Strip Mendatar', w: 1600, h: 500, bg: '#ffffff', slots: [
+                {x: 40, y: 40, w: 350, h: 420}, {x: 420, y: 40, w: 350, h: 420}, 
+                {x: 800, y: 40, w: 350, h: 420}, {x: 1180, y: 40, w: 350, h: 420}
+            ]},
+            // 11. Minimalist 1
+            { id: '11', name: 'Minimalist', w: 800, h: 1200, bg: '#fafaf9', slots: [
+                {x: 100, y: 150, w: 600, h: 800}
+            ]},
+            // 12. Fun Grid 3x3
+            { id: '12', name: 'Grid 3x3', w: 1200, h: 1400, bg: '#f3f4f6', slots: [
+                {x: 60, y: 60, w: 340, h: 340}, {x: 430, y: 60, w: 340, h: 340}, {x: 800, y: 60, w: 340, h: 340},
+                {x: 60, y: 430, w: 340, h: 340}, {x: 430, y: 430, w: 340, h: 340}, {x: 800, y: 430, w: 340, h: 340},
+                {x: 60, y: 800, w: 340, h: 340}, {x: 430, y: 800, w: 340, h: 340}, {x: 800, y: 800, w: 340, h: 340}
+            ]}
+        ];
+
+        // State Variables
+        let currentLayout = layoutsData[0]; 
+        let currentTimer = 3;
+        let currentCSSFilter = 'none';
+        let currentCanvasFilter = '';
+        let currentFontFamily = 'Plus Jakarta Sans';
+        let capturedPhotos = []; 
+        let isCapturing = false;
+        let fabricCanvas = null;
+        let videoStream = null;
+
+        // UI Elements
+        const videoEl = document.getElementById('webcam');
+        const countdownEl = document.getElementById('countdown-display');
+        const flashEl = document.getElementById('flash-overlay');
+        const photoCounterEl = document.getElementById('photo-counter');
+        const photoTotalEl = document.getElementById('photo-total');
+        const statusText = document.getElementById('status-text');
+        const stepBadge = document.getElementById('step-badge');
+
+        function initApp() {
+            renderLayoutOptions();
+            startCamera();
+            selectLayout(currentLayout.id);
+            
+            // Initialize Fabric Canvas
+            fabricCanvas = new fabric.Canvas('main-canvas', {
+                preserveObjectStacking: true,
+                selection: true
+            });
+            
+            // Handle Keyboard Delete
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                        deleteSelectedSticker();
+                    }
+                }
+            });
+
+            // Handle Resize to keep canvas responsive without cropping
+            window.addEventListener('resize', () => {
+                if (!document.getElementById('edit-container').classList.contains('hidden')) {
+                    fitCanvasToScreen();
+                }
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.remove('-translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('-translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function togglePanel(targetId) {
+            // Update menu states
+            document.querySelectorAll('.menu-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.target === targetId) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update panels visibility
+            document.querySelectorAll('.panel-content').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            document.getElementById(`panel-${targetId}`).classList.remove('hidden');
+        }
+
+        function renderLayoutOptions() {
+            const grid = document.getElementById('layout-grid');
+            grid.innerHTML = '';
+            layoutsData.forEach(layout => {
+                // Generate layout previews dynamically based on coordinates
+                const maxDim = Math.max(layout.w, layout.h);
+                const scale = 80 / maxDim; // Fit within an 80px box
+                
+                let slotsHtml = '';
+                layout.slots.forEach(slot => {
+                    slotsHtml += `<div class="absolute layout-preview-slot rounded-sm" style="left: ${slot.x * scale}px; top: ${slot.y * scale}px; width: ${slot.w * scale}px; height: ${slot.h * scale}px;"></div>`;
+                });
+
+                const btn = document.createElement('button');
+                btn.className = `layout-thumb flex flex-col items-center gap-1 md:gap-2 p-2 md:p-3 bg-white rounded-xl md:rounded-2xl border-2 border-transparent hover:shadow-md w-full ${currentLayout.id === layout.id ? 'active' : ''}`;
+                btn.onclick = () => selectLayout(layout.id);
+                btn.innerHTML = `
+                    <div class="w-full aspect-square bg-slate-100 rounded-lg md:rounded-xl flex items-center justify-center relative overflow-hidden" style="background-color: ${layout.bg}">
+                        <div class="relative shadow-sm" style="width: ${layout.w * scale}px; height: ${layout.h * scale}px; background: ${layout.bg}">
+                            ${slotsHtml}
+                        </div>
+                    </div>
+                    <span class="text-[10px] md:text-xs font-bold text-slate-600 truncate w-full text-center">${layout.name}</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectLayout(id) {
+            currentLayout = layoutsData.find(l => l.id === id);
+            
+            // Special handler for "Twin 3-Strip" (id 2) which needs 3 photos duplicated, not 6 unique photos
+            if(id === '2') {
+                photoTotalEl.innerText = 3; 
+            } else {
+                photoTotalEl.innerText = currentLayout.slots.length;
+            }
+            
+            photoCounterEl.innerText = capturedPhotos.length;
+            renderLayoutOptions(); // re-render to update active class
+        }
+
+        async function startCamera() {
+            try {
+                // Request higher resolution
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
+                    audio: false 
+                });
+                videoEl.srcObject = videoStream;
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                showToast("Aduh, akses kameranya diblokir nih.");
+            }
+        }
+
+        function setTimer(seconds) {
+            currentTimer = seconds;
+            document.querySelectorAll('.timer-btn').forEach(btn => {
+                btn.classList.remove('border-brand-500', 'bg-brand-50', 'text-brand-600', 'border-2');
+                btn.classList.add('border-slate-200', 'bg-slate-50', 'border');
+            });
+            const activeBtn = document.querySelector(`[data-time="${seconds}"]`);
+            activeBtn.classList.add('border-brand-500', 'bg-brand-50', 'text-brand-600', 'border-2');
+            activeBtn.classList.remove('border-slate-200', 'bg-slate-50', 'border');
+        }
+
+        function setFilter(cssFilter, canvasFilterStr) {
+            currentCSSFilter = cssFilter;
+            currentCanvasFilter = canvasFilterStr;
+            videoEl.style.filter = cssFilter;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function toggleCapture() {
+            if (isCapturing) {
+                // Jika sedang foto, batalkan proses
+                isCapturing = false;
+                return;
+            }
+            takeSequence();
+        }
+
+        async function takeSequence() {
+            if (isCapturing) return;
+            
+            let totalNeeded = currentLayout.id === '2' ? 3 : currentLayout.slots.length;
+
+            if (capturedPhotos.length >= totalNeeded) return;
+
+            isCapturing = true;
+            
+            // Ubah tombol jadi "Stop"
+            const btnInner = document.getElementById('btn-capture-inner');
+            const btnIcon = document.getElementById('btn-capture-icon');
+            btnInner.classList.replace('bg-brand-500', 'bg-red-500');
+            btnInner.classList.replace('group-hover:bg-brand-400', 'group-hover:bg-red-400');
+            btnIcon.classList.replace('ph-camera', 'ph-stop');
+            
+            for (let i = capturedPhotos.length; i < totalNeeded; i++) {
+                if (!isCapturing) break; // Cek kalau di-stop pengguna
+
+                // Update Status
+                statusText.innerText = `Foto ke-${i+1} dari ${totalNeeded}...`;
+
+                // Countdown
+                if (currentTimer > 0) {
+                    countdownEl.classList.remove('hidden');
+                    for (let c = currentTimer; c > 0; c--) {
+                        if (!isCapturing) break;
+                        countdownEl.innerText = c;
+                        await sleep(1000);
+                    }
+                    countdownEl.classList.add('hidden');
+                }
+
+                if (!isCapturing) break;
+
+                // Flash Animation
+                flashEl.classList.add('animate-flash');
+                setTimeout(() => flashEl.classList.remove('animate-flash'), 600);
+                
+                // Snap
+                await captureFrame();
+                
+                if (!isCapturing) break;
+                photoCounterEl.innerText = capturedPhotos.length;
+                
+                if (capturedPhotos.length < totalNeeded) {
+                    // Loop kecil agar sleep bisa diinterupsi saat di-stop
+                    for (let w = 0; w < 10; w++) {
+                        if (!isCapturing) break;
+                        await sleep(100); 
+                    }
+                }
+            }
+
+            isCapturing = false;
+            
+            // Kembalikan desain tombol ke normal
+            btnInner.classList.replace('bg-red-500', 'bg-brand-500');
+            btnInner.classList.replace('group-hover:bg-red-400', 'group-hover:bg-brand-400');
+            btnIcon.classList.replace('ph-stop', 'ph-camera');
+            
+            if (capturedPhotos.length === totalNeeded) {
+                enterEditMode();
+            } else {
+                statusText.innerText = "Sesi foto dihentikan.";
+            }
+        }
+
+        async function captureFrame() {
+            const rawWidth = videoEl.videoWidth;
+            const rawHeight = videoEl.videoHeight;
+            
+            // Memotong (crop) rasio kamera bawaan menjadi 4:3 
+            // agar hasilnya sama persis dengan kotak preview layar
+            const targetRatio = 4 / 3;
+            const rawRatio = rawWidth / rawHeight;
+            
+            let cropWidth = rawWidth;
+            let cropHeight = rawHeight;
+            
+            if (rawRatio > targetRatio) {
+                cropWidth = rawHeight * targetRatio;
+            } else {
+                cropHeight = rawWidth / targetRatio;
+            }
+            
+            const cropX = (rawWidth - cropWidth) / 2;
+            const cropY = (rawHeight - cropHeight) / 2;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // Apply filter if selected
+            if (currentCanvasFilter) {
+                ctx.filter = currentCanvasFilter;
+            }
+            
+            // Mirror image on canvas
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            
+            // Draw cropped 4:3 area
+            ctx.drawImage(videoEl, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            
+            // Simpan HD
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            capturedPhotos.push(dataUrl);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            let totalNeeded = currentLayout.id === '2' ? 3 : currentLayout.slots.length;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (capturedPhotos.length < totalNeeded) {
+                    capturedPhotos.push(e.target.result);
+                    photoCounterEl.innerText = capturedPhotos.length;
+                    
+                    if (capturedPhotos.length === totalNeeded) {
+                        enterEditMode();
+                    } else {
+                        showToast(`Mantap! Kurang ${totalNeeded - capturedPhotos.length} foto lagi.`);
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function enterEditMode() {
+            showToast("Wah cakep! Sekarang hias sesukamu");
+            
+            // Change status text
+            stepBadge.innerText = "Step 2";
+            statusText.innerText = "Hias fotomu biar makin cute!";
+            stepBadge.className = "bg-purple-100 text-purple-600 px-2 py-1 rounded-md text-xs";
+
+            // Switch layout visibility
+            document.getElementById('capture-container').classList.add('hidden');
+            document.getElementById('edit-container').classList.remove('hidden');
+            document.getElementById('edit-controls').classList.remove('hidden');
+            
+            // Sidebar buttons update
+            document.querySelectorAll('.capture-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.edit-only').forEach(el => el.classList.remove('hidden'));
+            
+            togglePanel('stickers');
+
+            buildCanvasLayout();
+        }
+
+        function resetCapture() {
+            capturedPhotos = [];
+            photoCounterEl.innerText = '0';
+            
+            stepBadge.innerText = "Step 1";
+            statusText.innerText = "Siap-siap berpose!";
+            stepBadge.className = "bg-brand-100 text-brand-600 px-2 py-1 rounded-md text-xs";
+
+            document.getElementById('capture-container').classList.remove('hidden');
+            document.getElementById('edit-container').classList.add('hidden');
+            document.getElementById('edit-controls').classList.add('hidden');
+            
+            document.querySelectorAll('.capture-only').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.edit-only').forEach(el => el.classList.add('hidden'));
+            
+            togglePanel('layout');
+            fabricCanvas.clear();
+        }
+
+        function fitCanvasToScreen() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (!wrapper || wrapper.clientWidth === 0) return;
+
+            // Padding calculation responsive (smaller padding for mobile)
+            const isMobile = window.innerWidth < 768;
+            const paddingX = isMobile ? 16 : 40;
+            const paddingY = isMobile ? 80 : 100; // extra padding for top text & bottom controls
+            
+            const availableW = wrapper.clientWidth - paddingX;
+            const availableH = wrapper.clientHeight - paddingY;
+
+            // Calculate scale to fit entirely within available space (NO CROPPING)
+            const scale = Math.min(availableW / currentLayout.w, availableH / currentLayout.h);
+
+            // Using Native Fabric Zoom prevents clipping bugs from CSS scaling
+            fabricCanvas.setDimensions({
+                width: currentLayout.w * scale,
+                height: currentLayout.h * scale
+            });
+            fabricCanvas.setZoom(scale);
+
+            // Clean up any old transform styles just in case
+            const canvasContainer = document.querySelector('.canvas-container');
+            if(canvasContainer) {
+                canvasContainer.style.transform = '';
+            }
+        }
+
+        function buildCanvasLayout() {
+            fabricCanvas.clear();
+            const w = currentLayout.w;
+            const h = currentLayout.h;
+            
+            fabricCanvas.setWidth(w);
+            fabricCanvas.setHeight(h);
+            
+            // Background Frame
+            const bgRect = new fabric.Rect({
+                left: 0, top: 0, width: w, height: h,
+                fill: currentLayout.bg,
+                selectable: false, evented: false,
+                id: 'frame-bg'
+            });
+            fabricCanvas.add(bgRect);
+
+            // Populate photos
+            let photoIndex = 0;
+            currentLayout.slots.forEach((slot, index) => {
+                // Logic for Twin 3-strip (duplicates photo 0,1,2 into slot 3,4,5)
+                if (currentLayout.id === '2') {
+                    photoIndex = index % 3;
+                } else {
+                    photoIndex = index;
+                }
+
+                if (capturedPhotos[photoIndex]) {
+                    processAndAddPhotoToSlot(capturedPhotos[photoIndex], slot);
+                }
+            });
+
+            // Trigger scale using new native fabric zoom right after building layout
+            fitCanvasToScreen();
+        }
+
+        function processAndAddPhotoToSlot(dataUrl, slot) {
+            const img = new Image();
+            img.onload = function() {
+                // Crop image object-fit: cover logic using temporary canvas
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = slot.w;
+                tempCanvas.height = slot.h;
+                const ctx = tempCanvas.getContext('2d');
+                
+                const scale = Math.max(slot.w / img.width, slot.h / img.height);
+                const x = (slot.w / 2) - (img.width / 2) * scale;
+                const y = (slot.h / 2) - (img.height / 2) * scale;
+                
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                
+                fabric.Image.fromURL(tempCanvas.toDataURL('image/jpeg', 1.0), (fabImg) => {
+                    fabImg.set({
+                        left: slot.x,
+                        top: slot.y,
+                        selectable: false,
+                        evented: false,
+                        hoverCursor: 'default'
+                    });
+                    fabricCanvas.add(fabImg);
+                    fabricCanvas.sendToBack(fabImg);
+                    
+                    // Keep background behind everything
+                    const bg = fabricCanvas.getObjects().find(o => o.id === 'frame-bg');
+                    if(bg) fabricCanvas.sendToBack(bg);
+                });
+            };
+            img.src = dataUrl;
+        }
+
+        function changeFrameColor(color) {
+            const bg = fabricCanvas.getObjects().find(o => o.id === 'frame-bg');
+            if (bg) {
+                bg.set('fill', color);
+                fabricCanvas.renderAll();
+            }
+        }
+
+        function addTextSticker(emoji) {
+            const text = new fabric.IText(emoji, {
+                left: currentLayout.w / 2,
+                top: currentLayout.h / 2,
+                fontSize: 80,
+                originX: 'center',
+                originY: 'center',
+                transparentCorners: false,
+                cornerColor: '#ec4899',
+                cornerStyle: 'circle',
+                borderColor: '#ec4899',
+                cornerSize: 16,
+                padding: 10
+            });
+            fabricCanvas.add(text);
+            fabricCanvas.setActiveObject(text);
+        }
+
+        function setFontFamily(font) {
+            currentFontFamily = font;
+            
+            // Update UI buttons styling
+            document.querySelectorAll('[id^="font-btn-"]').forEach(btn => {
+                btn.classList.remove('active-font-btn');
+            });
+            const activeBtn = document.getElementById(`font-btn-${font}`);
+            if(activeBtn) activeBtn.classList.add('active-font-btn');
+
+            // Apply font to currently selected text if any
+            const activeObj = fabricCanvas.getActiveObject();
+            if (activeObj && activeObj.type === 'i-text') {
+                activeObj.set('fontFamily', font);
+                fabricCanvas.renderAll();
+                showToast("Font berhasil diubah!");
+            }
+        }
+
+        function addCustomText(color) {
+            const input = document.getElementById('custom-text-input');
+            const val = input.value.trim();
+            
+            // Cek apakah ada teks yang sedang dipilih, kalau ada update saja
+            const activeObj = fabricCanvas.getActiveObject();
+            if (activeObj && activeObj.type === 'i-text') {
+                if (val) {
+                    activeObj.set('text', val);
+                }
+                activeObj.set('fill', color);
+                fabricCanvas.renderAll();
+                input.value = '';
+                showToast("Teks berhasil diupdate!");
+                return;
+            }
+
+            if(!val) {
+                showToast("Ketik teksnya dulu ya!");
+                return;
+            }
+            
+            // Gunakan IText agar bisa di double-click untuk edit langsung
+            const text = new fabric.IText(val, {
+                left: currentLayout.w / 2,
+                top: currentLayout.h / 2,
+                fontFamily: currentFontFamily,
+                fill: color,
+                fontSize: 60,
+                originX: 'center',
+                originY: 'center',
+                transparentCorners: false,
+                cornerColor: '#ec4899',
+                cornerStyle: 'circle',
+                borderColor: '#ec4899',
+                cornerSize: 16,
+                padding: 10
+            });
+            fabricCanvas.add(text);
+            fabricCanvas.setActiveObject(text);
+            input.value = ''; 
+        }
+
+        function deleteSelectedSticker() {
+            const activeObjects = fabricCanvas.getActiveObjects();
+            if (activeObjects.length) {
+                activeObjects.forEach(function(object) {
+                    if (object.id !== 'frame-bg') {
+                        fabricCanvas.remove(object);
+                    }
+                });
+                fabricCanvas.discardActiveObject();
+            } else {
+                showToast("Pilih stiker/teks yang mau dihapus dulu.");
+            }
+        }
+
+        function downloadImage() {
+            // Hilangkan outline selection sebelum download
+            fabricCanvas.discardActiveObject();
+            fabricCanvas.renderAll();
+            
+            // Simpan ukuran scale sekarang
+            const currentZoom = fabricCanvas.getZoom();
+            
+            // Kembalikan ke ukuran normal dulu buat dapetin gambar yang High-Res & nggak blur
+            fabricCanvas.setZoom(1);
+            fabricCanvas.setDimensions({ width: currentLayout.w, height: currentLayout.h });
+            
+            // Generate High-Res Image (No cropping, full layout size)
+            const dataURL = fabricCanvas.toDataURL({
+                format: 'jpeg',
+                quality: 1,
+                multiplier: 2 // Outputnya 2x lipat lebih HD dari ukuran aslinya
+            });
+            
+            // Balikin lagi ukuran preview-nya ke yang pas di layar
+            fabricCanvas.setZoom(currentZoom);
+            fabricCanvas.setDimensions({ 
+                width: currentLayout.w * currentZoom, 
+                height: currentLayout.h * currentZoom 
+            });
+            
+            const link = document.createElement('a');
+            link.download = `SnapCute_${new Date().getTime()}.jpg`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("Foto berhasil di-save");
+        }
+
+        // Jalankan pas pertama loading
+        window.onload = initApp;
+
+    </script>
+</body>
+</html>
