@@ -83,11 +83,12 @@
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* Fix for canvas outline */
+        /* Fix for canvas outline & responsive centering */
         .canvas-container {
             margin: 0 auto;
             border-radius: 4px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease;
         }
 
         /* Mirror the video feed */
@@ -105,9 +106,8 @@
     </div>
 
     <!-- SIDEBAR: MAIN MENU -->
-    <!-- On mobile it sits at the bottom, on desktop it sits on the left -->
-    <aside class="w-full md:w-20 h-20 md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 flex flex-row md:flex-col items-center justify-around md:justify-start px-2 md:px-0 py-2 md:py-8 gap-2 md:gap-6 z-30 shrink-0 overflow-x-auto overflow-y-hidden custom-scrollbar">
-        <!-- Brand logo (hidden on mobile to save space) -->
+    <aside class="w-full md:w-20 h-20 md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 flex flex-row md:flex-col items-center justify-around md:justify-start px-2 md:px-0 py-2 md:py-8 gap-2 md:gap-6 z-40 shrink-0 overflow-x-auto overflow-y-hidden custom-scrollbar">
+        <!-- Brand logo -->
         <div class="hidden md:flex w-12 h-12 bg-brand-500 rounded-2xl items-center justify-center text-white mb-4 shadow-lg shadow-brand-500/30 shrink-0">
             <i class="ph-fill ph-camera text-2xl"></i>
         </div>
@@ -132,7 +132,7 @@
             <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Filter</span>
         </button>
 
-        <!-- Edit Phase Menus (Hidden initially) -->
+        <!-- Edit Phase Menus -->
         <button onclick="togglePanel('stickers')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 edit-only hidden" data-target="stickers">
             <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
                 <i class="ph-fill ph-smiley-sticker text-xl md:text-2xl"></i>
@@ -154,8 +154,7 @@
     </aside>
 
     <!-- SECONDARY PANEL (OPTIONS) -->
-    <!-- Takes ~35vh on mobile to leave space for camera, full height on desktop -->
-    <div id="options-panel" class="w-full md:w-80 h-[35vh] md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 p-4 md:p-6 overflow-y-auto z-20 shrink-0 custom-scrollbar">
+    <div id="options-panel" class="w-full md:w-80 h-[35vh] md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 p-4 md:p-6 overflow-y-auto z-30 shrink-0 custom-scrollbar">
         
         <!-- Layouts Section -->
         <div id="panel-layout" class="panel-content">
@@ -326,27 +325,30 @@
     </div>
 
     <!-- MAIN CONTENT (CAMERA / EDITOR) -->
-    <!-- Takes remaining space (flex-1) -->
     <div class="flex-1 w-full md:w-auto flex flex-col relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
         
-        <!-- PROGRESS BAR / STATUS -->
-        <div class="absolute top-4 md:top-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
+        <!-- HEADER (Normal Flow instead of absolute to avoid overlaps) -->
+        <div class="w-full flex justify-center py-4 md:py-6 shrink-0 z-20">
             <div class="glass-panel px-4 py-2 md:px-6 md:py-2 rounded-full font-bold text-xs md:text-sm text-slate-600 flex items-center gap-2 md:gap-3 shadow-sm">
                 <span id="step-badge" class="bg-brand-100 text-brand-600 px-2 py-1 rounded-md text-[10px] md:text-xs">Step 1</span>
                 <span id="status-text">Siap-siap berpose!</span>
             </div>
         </div>
 
-        <!-- CAMERA PHASE -->
-        <div id="capture-container" class="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
+        <!-- CAPTURE CONTAINER -->
+        <!-- flex-1 ensures it correctly uses the space between header and bottom controls -->
+        <div id="capture-container" class="flex-1 flex flex-col items-center justify-between pb-4 px-4 md:pb-8 md:px-8 z-10 w-full overflow-hidden">
             
             <!-- Viewfinder Container -->
-            <div class="relative w-full max-w-4xl aspect-[4/3] bg-black rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden ring-4 md:ring-8 ring-white">
-                <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
-                
-                <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
-                
-                <div id="countdown-display" class="absolute inset-0 flex items-center justify-center text-[8rem] md:text-[12rem] font-bold text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] hidden z-20 font-display">3</div>
+            <!-- Flex-1 + min-h-0 trick allows the box to shrink effectively without breaking aspect ratio -->
+            <div class="relative w-full flex-1 flex items-center justify-center min-h-0">
+                <div class="relative bg-black rounded-2xl md:rounded-[2rem] shadow-2xl overflow-hidden ring-4 md:ring-8 ring-white shrink-0" style="aspect-ratio: 4/3; max-width: 100%; max-height: 100%;">
+                    <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+                    
+                    <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none"></div>
+                    
+                    <div id="countdown-display" class="absolute inset-0 flex items-center justify-center text-[8rem] md:text-[12rem] font-bold text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] hidden z-20 font-display">3</div>
+                </div>
             </div>
 
             <!-- Bottom Capture Controls -->
@@ -375,36 +377,54 @@
         </div>
 
         <!-- EDIT PHASE -->
-        <div id="edit-container" class="absolute inset-0 flex flex-col items-center justify-start p-2 md:p-8 z-0 hidden overflow-hidden pt-16 md:pt-20">
-            <!-- Canvas Wrapper: Handles responsive scaling -->
-            <div id="canvas-wrapper" class="relative flex-1 w-full flex justify-center items-center overflow-hidden drop-shadow-2xl">
+        <div id="edit-container" class="flex-1 flex flex-col items-center justify-between z-0 hidden w-full overflow-hidden relative">
+            
+            <!-- Zoom Controls Toolbar (Top Right in the container) -->
+            <div class="w-full flex justify-end px-4 md:px-8 pb-2 shrink-0 z-30">
+                <div class="flex gap-1 md:gap-2 glass-panel p-1.5 md:p-2 rounded-xl md:rounded-2xl shadow-sm border border-slate-200/60">
+                    <button onclick="setZoomLevel(0.2)" class="w-8 h-8 md:w-12 md:h-12 flex items-center justify-center text-slate-600 hover:text-brand-500 hover:bg-brand-50 rounded-lg md:rounded-xl transition-all" title="Zoom In">
+                        <i class="ph-bold ph-magnifying-glass-plus text-lg md:text-2xl"></i>
+                    </button>
+                    <div class="w-px h-8 md:h-12 bg-slate-200"></div>
+                    <button onclick="setZoomLevel(-0.2)" class="w-8 h-8 md:w-12 md:h-12 flex items-center justify-center text-slate-600 hover:text-brand-500 hover:bg-brand-50 rounded-lg md:rounded-xl transition-all" title="Zoom Out">
+                        <i class="ph-bold ph-magnifying-glass-minus text-lg md:text-2xl"></i>
+                    </button>
+                    <div class="w-px h-8 md:h-12 bg-slate-200"></div>
+                    <button onclick="resetZoomLevel()" class="px-3 md:px-4 h-8 md:h-12 flex items-center justify-center text-slate-600 hover:text-brand-500 hover:bg-brand-50 rounded-lg md:rounded-xl transition-all font-extrabold text-[10px] md:text-xs uppercase" title="Fit to Screen">
+                        FIT
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Wrapper: Handles responsive scaling & native scroll when zoomed -->
+            <div id="canvas-wrapper" class="flex-1 w-full relative overflow-auto custom-scrollbar grid place-items-center">
                 <!-- Fabric Canvas goes here -->
                 <canvas id="main-canvas"></canvas>
             </div>
-        </div>
-        
-        <!-- EDIT PHASE CONTROLS (Bottom Fixed in Main Content) -->
-        <div id="edit-controls" class="absolute bottom-4 md:bottom-6 left-0 right-0 flex justify-center z-20 hidden pointer-events-none">
-            <div class="glass-panel p-2 rounded-2xl shadow-2xl flex items-center gap-1 md:gap-2 pointer-events-auto">
-                <button onclick="resetCapture()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition">
-                    <i class="ph-bold ph-arrow-counter-clockwise text-lg md:text-xl mb-1"></i>
-                    <span class="text-[8px] md:text-[10px] font-bold">Ulang</span>
-                </button>
-                
-                <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
-                
-                <button onclick="deleteSelectedSticker()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-500 transition" title="Hapus Stiker">
-                    <i class="ph-bold ph-trash text-lg md:text-xl mb-1"></i>
-                    <span class="text-[8px] md:text-[10px] font-bold">Hapus</span>
-                </button>
-                
-                <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
-                
-                <button onclick="downloadImage()" class="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 h-12 md:h-16 rounded-xl bg-slate-800 text-white hover:bg-slate-700 shadow-lg hover:shadow-xl font-bold transition ml-1 md:ml-2 text-sm md:text-base">
-                    <i class="ph-bold ph-download-simple text-lg md:text-xl"></i>
-                    <span class="hidden sm:inline">Simpan Foto</span>
-                    <span class="sm:hidden">Simpan</span>
-                </button>
+
+            <!-- Bottom Edit Controls (Normal Flow) -->
+            <div id="edit-controls" class="w-full flex justify-center px-4 pb-4 md:pb-6 pt-3 shrink-0 z-40">
+                <div class="glass-panel p-2 rounded-2xl shadow-2xl flex items-center gap-1 md:gap-2 pointer-events-auto border border-slate-200/60">
+                    <button onclick="resetCapture()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition">
+                        <i class="ph-bold ph-arrow-counter-clockwise text-lg md:text-xl mb-1"></i>
+                        <span class="text-[8px] md:text-[10px] font-bold">Ulang</span>
+                    </button>
+                    
+                    <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
+                    
+                    <button onclick="deleteSelectedSticker()" class="flex flex-col items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-500 transition" title="Hapus Stiker">
+                        <i class="ph-bold ph-trash text-lg md:text-xl mb-1"></i>
+                        <span class="text-[8px] md:text-[10px] font-bold">Hapus</span>
+                    </button>
+                    
+                    <div class="w-px h-8 md:h-10 bg-slate-200 mx-1"></div>
+                    
+                    <button onclick="downloadImage()" class="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-8 h-12 md:h-16 rounded-xl bg-slate-800 text-white hover:bg-slate-700 shadow-lg hover:shadow-xl font-bold transition ml-1 md:ml-2 text-sm md:text-base">
+                        <i class="ph-bold ph-download-simple text-lg md:text-xl"></i>
+                        <span class="hidden sm:inline">Simpan Foto</span>
+                        <span class="sm:hidden">Simpan</span>
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -482,6 +502,10 @@
         let isCapturing = false;
         let fabricCanvas = null;
         let videoStream = null;
+        
+        // Zoom Management State
+        let baseScale = 1; 
+        let currentZoomMultiplier = 1;
 
         // UI Elements
         const videoEl = document.getElementById('webcam');
@@ -497,6 +521,16 @@
             startCamera();
             selectLayout(currentLayout.id);
             
+            // Konfigurasi Global FabricJS supaya hitbox nggak kebesaran
+            fabric.Object.prototype.set({
+                transparentCorners: false,
+                cornerColor: '#ec4899',
+                cornerStyle: 'circle',
+                borderColor: '#ec4899',
+                cornerSize: 10,       // Diperkecil agar titik sudut proporsional
+                touchCornerSize: 20   // Diperkecil drastis agar tidak salah pencet
+            });
+
             // Initialize Fabric Canvas
             fabricCanvas = new fabric.Canvas('main-canvas', {
                 preserveObjectStacking: true,
@@ -512,7 +546,7 @@
                 }
             });
 
-            // Handle Resize to keep canvas responsive without cropping
+            // Handle Resize
             window.addEventListener('resize', () => {
                 if (!document.getElementById('edit-container').classList.contains('hidden')) {
                     fitCanvasToScreen();
@@ -530,7 +564,6 @@
         }
 
         function togglePanel(targetId) {
-            // Update menu states
             document.querySelectorAll('.menu-btn').forEach(btn => {
                 btn.classList.remove('active');
                 if (btn.dataset.target === targetId) {
@@ -538,7 +571,6 @@
                 }
             });
 
-            // Update panels visibility
             document.querySelectorAll('.panel-content').forEach(panel => {
                 panel.classList.add('hidden');
             });
@@ -549,9 +581,8 @@
             const grid = document.getElementById('layout-grid');
             grid.innerHTML = '';
             layoutsData.forEach(layout => {
-                // Generate layout previews dynamically based on coordinates
                 const maxDim = Math.max(layout.w, layout.h);
-                const scale = 80 / maxDim; // Fit within an 80px box
+                const scale = 80 / maxDim;
                 
                 let slotsHtml = '';
                 layout.slots.forEach(slot => {
@@ -575,21 +606,17 @@
 
         function selectLayout(id) {
             currentLayout = layoutsData.find(l => l.id === id);
-            
-            // Special handler for "Twin 3-Strip" (id 2) which needs 3 photos duplicated, not 6 unique photos
             if(id === '2') {
                 photoTotalEl.innerText = 3; 
             } else {
                 photoTotalEl.innerText = currentLayout.slots.length;
             }
-            
             photoCounterEl.innerText = capturedPhotos.length;
-            renderLayoutOptions(); // re-render to update active class
+            renderLayoutOptions();
         }
 
         async function startCamera() {
             try {
-                // Request higher resolution
                 videoStream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } }, 
                     audio: false 
@@ -624,7 +651,6 @@
 
         function toggleCapture() {
             if (isCapturing) {
-                // Jika sedang foto, batalkan proses
                 isCapturing = false;
                 return;
             }
@@ -633,14 +659,10 @@
 
         async function takeSequence() {
             if (isCapturing) return;
-            
             let totalNeeded = currentLayout.id === '2' ? 3 : currentLayout.slots.length;
-
             if (capturedPhotos.length >= totalNeeded) return;
 
             isCapturing = true;
-            
-            // Ubah tombol jadi "Stop"
             const btnInner = document.getElementById('btn-capture-inner');
             const btnIcon = document.getElementById('btn-capture-icon');
             btnInner.classList.replace('bg-brand-500', 'bg-red-500');
@@ -648,12 +670,10 @@
             btnIcon.classList.replace('ph-camera', 'ph-stop');
             
             for (let i = capturedPhotos.length; i < totalNeeded; i++) {
-                if (!isCapturing) break; // Cek kalau di-stop pengguna
+                if (!isCapturing) break;
 
-                // Update Status
                 statusText.innerText = `Foto ke-${i+1} dari ${totalNeeded}...`;
 
-                // Countdown
                 if (currentTimer > 0) {
                     countdownEl.classList.remove('hidden');
                     for (let c = currentTimer; c > 0; c--) {
@@ -666,18 +686,15 @@
 
                 if (!isCapturing) break;
 
-                // Flash Animation
                 flashEl.classList.add('animate-flash');
                 setTimeout(() => flashEl.classList.remove('animate-flash'), 600);
                 
-                // Snap
                 await captureFrame();
                 
                 if (!isCapturing) break;
                 photoCounterEl.innerText = capturedPhotos.length;
                 
                 if (capturedPhotos.length < totalNeeded) {
-                    // Loop kecil agar sleep bisa diinterupsi saat di-stop
                     for (let w = 0; w < 10; w++) {
                         if (!isCapturing) break;
                         await sleep(100); 
@@ -686,8 +703,6 @@
             }
 
             isCapturing = false;
-            
-            // Kembalikan desain tombol ke normal
             btnInner.classList.replace('bg-red-500', 'bg-brand-500');
             btnInner.classList.replace('group-hover:bg-red-400', 'group-hover:bg-brand-400');
             btnIcon.classList.replace('ph-stop', 'ph-camera');
@@ -702,9 +717,6 @@
         async function captureFrame() {
             const rawWidth = videoEl.videoWidth;
             const rawHeight = videoEl.videoHeight;
-            
-            // Memotong (crop) rasio kamera bawaan menjadi 4:3 
-            // agar hasilnya sama persis dengan kotak preview layar
             const targetRatio = 4 / 3;
             const rawRatio = rawWidth / rawHeight;
             
@@ -725,19 +737,12 @@
             canvas.height = cropHeight;
             const ctx = canvas.getContext('2d');
             
-            // Apply filter if selected
-            if (currentCanvasFilter) {
-                ctx.filter = currentCanvasFilter;
-            }
+            if (currentCanvasFilter) ctx.filter = currentCanvasFilter;
             
-            // Mirror image on canvas
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
-            
-            // Draw cropped 4:3 area
             ctx.drawImage(videoEl, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
             
-            // Simpan HD
             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
             capturedPhotos.push(dataUrl);
         }
@@ -747,7 +752,6 @@
             if (!file) return;
 
             let totalNeeded = currentLayout.id === '2' ? 3 : currentLayout.slots.length;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 if (capturedPhotos.length < totalNeeded) {
@@ -768,22 +772,18 @@
         function enterEditMode() {
             showToast("Wah cakep! Sekarang hias sesukamu");
             
-            // Change status text
             stepBadge.innerText = "Step 2";
             statusText.innerText = "Hias fotomu biar makin cute!";
             stepBadge.className = "bg-purple-100 text-purple-600 px-2 py-1 rounded-md text-xs";
 
-            // Switch layout visibility
             document.getElementById('capture-container').classList.add('hidden');
             document.getElementById('edit-container').classList.remove('hidden');
             document.getElementById('edit-controls').classList.remove('hidden');
             
-            // Sidebar buttons update
             document.querySelectorAll('.capture-only').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.edit-only').forEach(el => el.classList.remove('hidden'));
             
             togglePanel('stickers');
-
             buildCanvasLayout();
         }
 
@@ -810,29 +810,39 @@
             const wrapper = document.getElementById('canvas-wrapper');
             if (!wrapper || wrapper.clientWidth === 0) return;
 
-            // Padding calculation responsive (smaller padding for mobile)
-            const isMobile = window.innerWidth < 768;
-            const paddingX = isMobile ? 16 : 40;
-            const paddingY = isMobile ? 80 : 100; // extra padding for top text & bottom controls
+            const paddingX = 40;
+            const paddingY = 40;
             
             const availableW = wrapper.clientWidth - paddingX;
             const availableH = wrapper.clientHeight - paddingY;
 
-            // Calculate scale to fit entirely within available space (NO CROPPING)
-            const scale = Math.min(availableW / currentLayout.w, availableH / currentLayout.h);
+            baseScale = Math.min(availableW / currentLayout.w, availableH / currentLayout.h);
+            
+            // Reset zoom saat menghitung ulang orientasi layar
+            currentZoomMultiplier = 1; 
+            applyZoom();
+        }
 
-            // Using Native Fabric Zoom prevents clipping bugs from CSS scaling
+        function setZoomLevel(delta) {
+            currentZoomMultiplier += delta;
+            if (currentZoomMultiplier < 0.5) currentZoomMultiplier = 0.5;
+            if (currentZoomMultiplier > 3) currentZoomMultiplier = 3;
+            applyZoom();
+        }
+
+        function resetZoomLevel() {
+            currentZoomMultiplier = 1;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const finalScale = baseScale * currentZoomMultiplier;
             fabricCanvas.setDimensions({
-                width: currentLayout.w * scale,
-                height: currentLayout.h * scale
+                width: currentLayout.w * finalScale,
+                height: currentLayout.h * finalScale
             });
-            fabricCanvas.setZoom(scale);
-
-            // Clean up any old transform styles just in case
-            const canvasContainer = document.querySelector('.canvas-container');
-            if(canvasContainer) {
-                canvasContainer.style.transform = '';
-            }
+            fabricCanvas.setZoom(finalScale);
+            fabricCanvas.renderAll();
         }
 
         function buildCanvasLayout() {
@@ -843,7 +853,6 @@
             fabricCanvas.setWidth(w);
             fabricCanvas.setHeight(h);
             
-            // Background Frame
             const bgRect = new fabric.Rect({
                 left: 0, top: 0, width: w, height: h,
                 fill: currentLayout.bg,
@@ -852,10 +861,8 @@
             });
             fabricCanvas.add(bgRect);
 
-            // Populate photos
             let photoIndex = 0;
             currentLayout.slots.forEach((slot, index) => {
-                // Logic for Twin 3-strip (duplicates photo 0,1,2 into slot 3,4,5)
                 if (currentLayout.id === '2') {
                     photoIndex = index % 3;
                 } else {
@@ -867,14 +874,12 @@
                 }
             });
 
-            // Trigger scale using new native fabric zoom right after building layout
             fitCanvasToScreen();
         }
 
         function processAndAddPhotoToSlot(dataUrl, slot) {
             const img = new Image();
             img.onload = function() {
-                // Crop image object-fit: cover logic using temporary canvas
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = slot.w;
                 tempCanvas.height = slot.h;
@@ -897,7 +902,6 @@
                     fabricCanvas.add(fabImg);
                     fabricCanvas.sendToBack(fabImg);
                     
-                    // Keep background behind everything
                     const bg = fabricCanvas.getObjects().find(o => o.id === 'frame-bg');
                     if(bg) fabricCanvas.sendToBack(bg);
                 });
@@ -917,14 +921,9 @@
             const text = new fabric.IText(emoji, {
                 left: currentLayout.w / 2,
                 top: currentLayout.h / 2,
-                fontSize: 80,
+                fontSize: 40, // Diperkecil agar lebih pas
                 originX: 'center',
                 originY: 'center',
-                transparentCorners: false,
-                cornerColor: '#ec4899',
-                cornerStyle: 'circle',
-                borderColor: '#ec4899',
-                cornerSize: 16,
                 padding: 10
             });
             fabricCanvas.add(text);
@@ -933,15 +932,12 @@
 
         function setFontFamily(font) {
             currentFontFamily = font;
-            
-            // Update UI buttons styling
             document.querySelectorAll('[id^="font-btn-"]').forEach(btn => {
                 btn.classList.remove('active-font-btn');
             });
             const activeBtn = document.getElementById(`font-btn-${font}`);
             if(activeBtn) activeBtn.classList.add('active-font-btn');
 
-            // Apply font to currently selected text if any
             const activeObj = fabricCanvas.getActiveObject();
             if (activeObj && activeObj.type === 'i-text') {
                 activeObj.set('fontFamily', font);
@@ -954,7 +950,6 @@
             const input = document.getElementById('custom-text-input');
             const val = input.value.trim();
             
-            // Cek apakah ada teks yang sedang dipilih, kalau ada update saja
             const activeObj = fabricCanvas.getActiveObject();
             if (activeObj && activeObj.type === 'i-text') {
                 if (val) {
@@ -972,20 +967,14 @@
                 return;
             }
             
-            // Gunakan IText agar bisa di double-click untuk edit langsung
             const text = new fabric.IText(val, {
                 left: currentLayout.w / 2,
                 top: currentLayout.h / 2,
                 fontFamily: currentFontFamily,
                 fill: color,
-                fontSize: 60,
+                fontSize: 45, // Diperkecil dari sebelumnya
                 originX: 'center',
                 originY: 'center',
-                transparentCorners: false,
-                cornerColor: '#ec4899',
-                cornerStyle: 'circle',
-                borderColor: '#ec4899',
-                cornerSize: 16,
                 padding: 10
             });
             fabricCanvas.add(text);
@@ -1008,30 +997,21 @@
         }
 
         function downloadImage() {
-            // Hilangkan outline selection sebelum download
             fabricCanvas.discardActiveObject();
             fabricCanvas.renderAll();
             
-            // Simpan ukuran scale sekarang
-            const currentZoom = fabricCanvas.getZoom();
-            
-            // Kembalikan ke ukuran normal dulu buat dapetin gambar yang High-Res & nggak blur
+            // Balik ke setting awal khusus untuk generate foto kualitas HD
             fabricCanvas.setZoom(1);
             fabricCanvas.setDimensions({ width: currentLayout.w, height: currentLayout.h });
             
-            // Generate High-Res Image (No cropping, full layout size)
             const dataURL = fabricCanvas.toDataURL({
                 format: 'jpeg',
                 quality: 1,
-                multiplier: 2 // Outputnya 2x lipat lebih HD dari ukuran aslinya
+                multiplier: 2 // Output HD
             });
             
-            // Balikin lagi ukuran preview-nya ke yang pas di layar
-            fabricCanvas.setZoom(currentZoom);
-            fabricCanvas.setDimensions({ 
-                width: currentLayout.w * currentZoom, 
-                height: currentLayout.h * currentZoom 
-            });
+            // Balikin lagi status zoom buat di layar preview
+            applyZoom();
             
             const link = document.createElement('a');
             link.download = `SnapCute_${new Date().getTime()}.jpg`;
@@ -1048,5 +1028,4 @@
 
     </script>
 </body>
-
 </html>
