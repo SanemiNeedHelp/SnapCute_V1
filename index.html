@@ -189,8 +189,13 @@
     <div class="relative flex-1 w-full h-full flex flex-col overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
 
         <!-- OVERLAY PANEL (Pop-up options) -->
-        <div id="panel-wrapper" class="absolute z-40 bottom-0 left-0 w-full md:w-80 md:h-full md:bottom-auto md:top-0 panel-open">
+        <div id="panel-wrapper" class="absolute z-40 bottom-0 left-0 w-full md:w-80 md:h-full md:bottom-auto md:top-0 panel-closed">
             
+            <!-- Toggle Button: Di mobile tetap di atas panel, di desktop di tengah pinggir dan hilang saat panel tutup -->
+            <button onclick="togglePanelCollapse()" id="panel-toggle-btn" class="absolute z-50 flex items-center justify-center bg-brand-500 text-white shadow-[0_4px_15px_rgba(236,72,153,0.4)] hover:bg-brand-600 hover:scale-110 active:scale-95 transition-all duration-300 w-16 h-8 rounded-t-xl border-t-2 border-x-2 md:border-2 border-white left-1/2 -top-8 -translate-x-1/2 md:w-10 md:h-10 md:rounded-full md:top-1/2 md:-right-5 md:left-auto md:translate-x-0 md:-translate-y-1/2 md:opacity-0 md:scale-50 md:pointer-events-none">
+                <i id="panel-toggle-icon" class="ph-bold text-xl md:text-lg transition-transform duration-300"></i>
+            </button>
+
             <!-- Options Panel Content -->
             <div id="options-panel" class="w-full h-[45vh] md:h-full glass-panel border-t md:border-t-0 md:border-r border-slate-200 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-white/95 backdrop-blur-xl">
                 
@@ -551,7 +556,7 @@
         let videoStream = null;
         let minZoomLimit = 0.1;
         
-        let isPanelOpen = true; 
+        let isPanelOpen = false; 
         let isAnimatingZoom = false; 
 
         // UI Elements
@@ -587,13 +592,43 @@
 
             // Handle Resize
             window.addEventListener('resize', () => {
+                updateToggleIcon();
                 if (!document.getElementById('edit-container').classList.contains('hidden')) {
                     fitCanvasToScreen();
                 }
             });
 
-            // Set active panel explicitly by default
-            togglePanel('layout', true);
+            // Set up konten awal tanpa membuka panel
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+            document.getElementById('panel-layout').classList.remove('hidden');
+            
+            updateToggleIcon();
+        }
+
+        function updateToggleIcon() {
+            const icon = document.getElementById('panel-toggle-icon');
+            const btn = document.getElementById('panel-toggle-btn');
+            const isDesktop = window.innerWidth >= 768;
+            
+            icon.classList.remove('ph-caret-left', 'ph-caret-right', 'ph-caret-up', 'ph-caret-down');
+            
+            if (isDesktop) {
+                if (!isPanelOpen) {
+                    icon.classList.add('ph-caret-right');
+                    btn.classList.add('md:opacity-0', 'md:scale-50', 'md:pointer-events-none');
+                } else {
+                    icon.classList.add('ph-caret-left');
+                    btn.classList.remove('md:opacity-0', 'md:scale-50', 'md:pointer-events-none');
+                }
+            } else {
+                btn.classList.remove('md:opacity-0', 'md:scale-50', 'md:pointer-events-none');
+                if (!isPanelOpen) {
+                    icon.classList.add('ph-caret-up');
+                } else {
+                    icon.classList.add('ph-caret-down');
+                }
+            }
         }
 
         function smoothResetToCenter() {
@@ -753,6 +788,32 @@
             }, 3000);
         }
 
+        function togglePanelCollapse() {
+            const panel = document.getElementById('panel-wrapper');
+            isPanelOpen = !isPanelOpen;
+            
+            if (!isPanelOpen) {
+                panel.classList.remove('panel-open');
+                panel.classList.add('panel-closed');
+                document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            } else {
+                panel.classList.remove('panel-closed');
+                panel.classList.add('panel-open');
+                
+                const hasActive = document.querySelector('.menu-btn.active');
+                if(!hasActive) {
+                    const firstBtn = document.querySelector('.menu-btn:not(.hidden)');
+                    if(firstBtn) {
+                        firstBtn.classList.add('active');
+                        const target = firstBtn.getAttribute('data-target');
+                        document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+                        document.getElementById(`panel-${target}`).classList.remove('hidden');
+                    }
+                }
+            }
+            updateToggleIcon();
+        }
+
         function togglePanel(targetId, forceOpen = false) {
             const panel = document.getElementById('panel-wrapper');
             const targetPanel = document.getElementById(`panel-${targetId}`);
@@ -763,10 +824,10 @@
                 isPanelOpen = false;
                 panel.classList.remove('panel-open');
                 panel.classList.add('panel-closed');
-                showToast("Menu disembunyikan sementara.");
                 
                 // Hilangkan status aktif di sidebar
                 document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+                updateToggleIcon();
                 return;
             }
 
@@ -775,7 +836,7 @@
                 isPanelOpen = true;
                 panel.classList.remove('panel-closed');
                 panel.classList.add('panel-open');
-                if(!forceOpen) showToast("Menu ditampilkan kembali.");
+                updateToggleIcon();
             }
 
             // Update status tombol sidebar
@@ -890,7 +951,6 @@
                 isPanelOpen = true;
                 panel.classList.remove('panel-closed');
                 panel.classList.add('panel-open');
-                showToast("Sesi foto dimulai!");
             }
 
             for (let i = capturedPhotos.length; i < totalNeeded; i++) {
