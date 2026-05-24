@@ -600,9 +600,13 @@
 
             // Set up konten awal tanpa membuka panel
             document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            const layoutBtn = document.querySelector(`.menu-btn[data-target="layout"]`);
+            if (layoutBtn) layoutBtn.classList.add('active');
+            
             document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
             document.getElementById('panel-layout').classList.remove('hidden');
             
+            isPanelOpen = false;
             updateToggleIcon();
         }
 
@@ -945,12 +949,13 @@
             btnInner.classList.replace('group-hover:bg-brand-400', 'group-hover:bg-red-400');
             btnIcon.classList.replace('ph-camera', 'ph-stop');
             
-            // Buka panel secara otomatis kalau ketutup waktu foto
-            if(!isPanelOpen) {
+            // Tutup panel secara otomatis kalau lagi kebuka waktu mau foto biar layar lega
+            if(isPanelOpen) {
                 const panel = document.getElementById('panel-wrapper');
-                isPanelOpen = true;
-                panel.classList.remove('panel-closed');
-                panel.classList.add('panel-open');
+                isPanelOpen = false;
+                panel.classList.remove('panel-open');
+                panel.classList.add('panel-closed');
+                updateToggleIcon();
             }
 
             for (let i = capturedPhotos.length; i < totalNeeded; i++) {
@@ -1073,7 +1078,20 @@
             document.querySelectorAll('.capture-only').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.edit-only').forEach(el => el.classList.remove('hidden'));
             
-            togglePanel('stickers', true); 
+            // Set menu ke stickers tapi biarkan panel tetap tertutup
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            const stickerBtn = document.querySelector(`.menu-btn[data-target="stickers"]`);
+            if (stickerBtn) stickerBtn.classList.add('active');
+
+            document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+            const targetPanel = document.getElementById('panel-stickers');
+            if (targetPanel) targetPanel.classList.remove('hidden');
+
+            const panel = document.getElementById('panel-wrapper');
+            isPanelOpen = false;
+            panel.classList.remove('panel-open');
+            panel.classList.add('panel-closed');
+            updateToggleIcon();
 
             buildCanvasLayout();
         }
@@ -1093,7 +1111,21 @@
             document.querySelectorAll('.capture-only').forEach(el => el.classList.remove('hidden'));
             document.querySelectorAll('.edit-only').forEach(el => el.classList.add('hidden'));
             
-            togglePanel('layout', true);
+            // Set menu ke layout tapi pastikan panel tetap tertutup
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            const layoutBtn = document.querySelector(`.menu-btn[data-target="layout"]`);
+            if (layoutBtn) layoutBtn.classList.add('active');
+
+            document.querySelectorAll('.panel-content').forEach(p => p.classList.add('hidden'));
+            const targetPanel = document.getElementById('panel-layout');
+            if (targetPanel) targetPanel.classList.remove('hidden');
+
+            const panel = document.getElementById('panel-wrapper');
+            isPanelOpen = false;
+            panel.classList.remove('panel-open');
+            panel.classList.add('panel-closed');
+            updateToggleIcon();
+
             fabricCanvas.clear();
         }
 
