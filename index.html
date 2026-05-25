@@ -146,7 +146,7 @@
         
         <!-- Capture Phase Menus -->
         <button onclick="togglePanel('layout')" class="menu-btn group flex flex-col items-center justify-center gap-1 w-16 md:w-full shrink-0 capture-only active" data-target="layout">
-            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors bg-brand-50 text-brand-500 group-hover:bg-brand-50">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-colors text-slate-400 group-hover:bg-slate-50 group-[.active]:bg-brand-50 group-[.active]:text-brand-500">
                 <i class="ph-fill ph-squares-four text-xl md:text-2xl"></i>
             </div>
             <span class="text-[10px] font-bold text-slate-500 group-[.active]:text-brand-500">Layout</span>
@@ -799,7 +799,7 @@
             if (!isPanelOpen) {
                 panel.classList.remove('panel-open');
                 panel.classList.add('panel-closed');
-                document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+                // Hapus logika untuk nge-reset class .active agar status menu tetep nyala pas panel ditutup
             } else {
                 panel.classList.remove('panel-closed');
                 panel.classList.add('panel-open');
@@ -829,8 +829,7 @@
                 panel.classList.remove('panel-open');
                 panel.classList.add('panel-closed');
                 
-                // Hilangkan status aktif di sidebar
-                document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+                // Menghilangkan status aktif di sidebar udah dihapus dari sini biar menu tetep nyala
                 updateToggleIcon();
                 return;
             }
@@ -843,7 +842,7 @@
                 updateToggleIcon();
             }
 
-            // Update status tombol sidebar
+            // Update status tombol sidebar (pindah aktif ke tombol yang baru diklik)
             document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
             if (activeBtn) activeBtn.classList.add('active');
 
